@@ -32,3 +32,39 @@ describe('makeQuery', () => {
     },
   );
 });
+
+describe('makeQuery with budget months', () => {
+  it('filters by the real day range and groups by day', () => {
+    const query = makeQuery(
+      'assets',
+      '2026-10',
+      '2026-11',
+      'Monthly',
+      '$and',
+      [],
+      undefined,
+      27,
+    ).serialize();
+
+    expect(query.filterExpressions).toContainEqual({
+      $and: [
+        { date: { $gte: '2026-09-27' } },
+        { date: { $lte: '2026-11-26' } },
+      ],
+    });
+    expect(query.groupExpressions).toContainEqual({ $day: '$date' });
+  });
+
+  it('keeps calendar months when the start day is 1', () => {
+    const query = makeQuery(
+      'assets',
+      '2026-10',
+      '2026-11',
+      'Monthly',
+      '$and',
+      [],
+    ).serialize();
+
+    expect(query.groupExpressions).toContainEqual({ $month: '$date' });
+  });
+});

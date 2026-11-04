@@ -5,7 +5,6 @@ import { Block } from '@actual-app/components/block';
 import { styles } from '@actual-app/components/styles';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import type { SpendingWidget } from '@actual-app/core/types/models';
 
 import { FinancialText } from '#components/FinancialText';
@@ -20,8 +19,12 @@ import {
   getSpendingAverageRangeLabel,
   normalizeSpendingAverageRange,
 } from '#components/reports/spendingAverageRange';
-import { createSpendingSpreadsheet } from '#components/reports/spreadsheets/spending-spreadsheet';
+import {
+  createSpendingSpreadsheet,
+  getSpendingTodayIndex,
+} from '#components/reports/spreadsheets/spending-spreadsheet';
 import { useReport } from '#components/reports/useReport';
+import { useBudgetMonthStartDay } from '#hooks/useBudgetMonthStartDay';
 import { useFormat } from '#hooks/useFormat';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 
@@ -41,6 +44,7 @@ export function SpendingCard({
   const { t } = useTranslation();
   const format = useFormat();
   const [budgetTypePref] = useSyncedPref('budgetType');
+  const budgetMonthStartDay = useBudgetMonthStartDay();
   const budgetType: 'envelope' | 'tracking' =
     budgetTypePref === 'tracking' ? 'tracking' : 'envelope';
 
@@ -51,7 +55,10 @@ export function SpendingCard({
   const averageRange = normalizeSpendingAverageRange(meta?.averageRange);
   const averageRangeLabel = getSpendingAverageRangeLabel(averageRange, t);
 
-  const [compare, compareTo] = calculateSpendingReportTimeRange(meta ?? {});
+  const [compare, compareTo] = calculateSpendingReportTimeRange({
+    ...meta,
+    budgetMonthStartDay,
+  });
 
   const selection =
     spendingReportMode === 'single-month' ? 'compareTo' : spendingReportMode;
@@ -63,8 +70,10 @@ export function SpendingCard({
       compareTo,
       averageRange,
       budgetType,
+      budgetMonthStartDay,
     });
   }, [
+    budgetMonthStartDay,
     meta?.conditions,
     meta?.conditionsOp,
     compare,
@@ -74,12 +83,7 @@ export function SpendingCard({
   ]);
 
   const data = useReport('default', getGraphData);
-  const todayDay =
-    compare !== monthUtils.currentMonth()
-      ? 27
-      : monthUtils.getDay(monthUtils.currentDay()) - 1 >= 28
-        ? 27
-        : monthUtils.getDay(monthUtils.currentDay()) - 1;
+  const todayDay = getSpendingTodayIndex(compare, budgetMonthStartDay);
   const difference =
     data &&
     Math.round(

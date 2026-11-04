@@ -206,8 +206,8 @@ export function getFullRange(start: string, end: string) {
   return [start, end, 'full'] as const;
 }
 
-export function getLatestRange(offset: number) {
-  const end = monthUtils.currentMonth();
+export function getLatestRange(offset: number, budgetMonthStartDay = 1) {
+  const end = monthUtils.currentBudgetMonth(budgetMonthStartDay);
   const start = monthUtils.subMonths(end, offset);
 
   return [start, end, 'sliding-window'] as const;
@@ -251,20 +251,22 @@ export function calculateTimeRange(
   timeFrame?: Partial<TimeFrame>,
   defaultTimeFrame?: TimeFrame,
   latestTransaction?: string,
+  budgetMonthStartDay = 1,
 ) {
+  // The month that is "now" (a budget month when they don't start on the 1st)
+  const nowMonth = monthUtils.currentBudgetMonth(budgetMonthStartDay);
   const start =
     timeFrame?.start ??
     defaultTimeFrame?.start ??
-    monthUtils.subMonths(monthUtils.currentMonth(), 5);
-  const end =
-    timeFrame?.end ?? defaultTimeFrame?.end ?? monthUtils.currentMonth();
+    monthUtils.subMonths(nowMonth, 5);
+  const end = timeFrame?.end ?? defaultTimeFrame?.end ?? nowMonth;
   const mode = timeFrame?.mode ?? defaultTimeFrame?.mode ?? 'sliding-window';
 
   if (mode === 'full') {
     const latestTransactionMonth = latestTransaction
       ? monthUtils.monthFromDate(latestTransaction)
       : null;
-    const currentMonth = monthUtils.currentMonth();
+    const currentMonth = nowMonth;
     const fullEnd =
       latestTransactionMonth &&
       monthUtils.isAfter(latestTransactionMonth, currentMonth)
@@ -291,41 +293,37 @@ export function calculateTimeRange(
 
     if (start > end) {
       return [
-        monthUtils.currentMonth(),
-        monthUtils.subMonths(monthUtils.currentMonth(), -offset),
+        nowMonth,
+        monthUtils.subMonths(nowMonth, -offset),
         'sliding-window',
       ] as const;
     }
 
-    return getLatestRange(offset);
+    return getLatestRange(offset, budgetMonthStartDay);
   }
   if (mode === 'lastMonth') {
-    const lastMonth = monthUtils.subMonths(monthUtils.currentMonth(), 1);
+    const lastMonth = monthUtils.subMonths(nowMonth, 1);
     return [lastMonth, lastMonth, 'lastMonth'] as const;
   }
   if (mode === 'lastYear') {
     return [
-      monthUtils.getYearStart(monthUtils.prevYear(monthUtils.currentMonth())),
+      monthUtils.getYearStart(monthUtils.prevYear(nowMonth)),
       monthUtils.getYearEnd(monthUtils.prevYear(monthUtils.currentDate())),
       'lastYear',
     ] as const;
   }
   if (mode === 'yearToDate') {
-    return [
-      monthUtils.currentYear() + '-01',
-      monthUtils.currentMonth(),
-      'yearToDate',
-    ] as const;
+    return [monthUtils.currentYear() + '-01', nowMonth, 'yearToDate'] as const;
   }
   if (mode === 'priorYearToDate') {
     return [
-      monthUtils.getYearStart(monthUtils.prevYear(monthUtils.currentMonth())),
+      monthUtils.getYearStart(monthUtils.prevYear(nowMonth)),
       monthUtils.prevYear(monthUtils.currentDate(), 'yyyy-MM-dd'),
       'priorYearToDate',
     ] as const;
   }
   if (mode === 'currentQuarter') {
-    const currentMonth = monthUtils.currentMonth();
+    const currentMonth = nowMonth;
     return [
       monthUtils.getQuarterStart(currentMonth),
       monthUtils.getQuarterEnd(currentMonth),
@@ -333,7 +331,7 @@ export function calculateTimeRange(
     ] as const;
   }
   if (mode === 'previousQuarter') {
-    const prevQuarterMonth = monthUtils.prevQuarter(monthUtils.currentMonth());
+    const prevQuarterMonth = monthUtils.prevQuarter(nowMonth);
     return [
       monthUtils.getQuarterStart(prevQuarterMonth),
       monthUtils.getQuarterEnd(prevQuarterMonth),
@@ -349,16 +347,19 @@ export function calculateSpendingReportTimeRange({
   compareTo,
   isLive = true,
   mode = 'single-month',
+  budgetMonthStartDay = 1,
 }: {
   compare?: string;
   compareTo?: string;
   isLive?: boolean;
   mode?: 'budget' | 'average' | 'single-month';
+  budgetMonthStartDay?: number;
 }): [string, string] {
+  const nowMonth = monthUtils.currentBudgetMonth(budgetMonthStartDay);
   // Budget and average chart a single month, so a live report is always the
   // current month.
   if (['budget', 'average'].includes(mode) && isLive) {
-    const month = monthUtils.currentMonth();
+    const month = nowMonth;
     return [month, month];
   }
 
@@ -372,10 +373,12 @@ export function calculateSpendingReportTimeRange({
       mode: (isLive ?? true) ? 'sliding-window' : 'static',
     },
     {
-      start: monthUtils.currentMonth(),
-      end: monthUtils.subMonths(monthUtils.currentMonth(), 1),
+      start: nowMonth,
+      end: monthUtils.subMonths(nowMonth, 1),
       mode: 'sliding-window',
     },
+    undefined,
+    budgetMonthStartDay,
   );
   return [start, end];
 }

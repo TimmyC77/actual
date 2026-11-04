@@ -57,6 +57,7 @@ import { normalizeTagScope } from '#components/reports/tagScope';
 import { useReport } from '#components/reports/useReport';
 import { calculateHasWarning, fromDateRepr } from '#components/reports/util';
 import { useAccounts } from '#hooks/useAccounts';
+import { useBudgetMonthStartDay } from '#hooks/useBudgetMonthStartDay';
 import { useCategories } from '#hooks/useCategories';
 import { useDateFormat } from '#hooks/useDateFormat';
 import { useFormat } from '#hooks/useFormat';
@@ -150,6 +151,7 @@ function CustomReportInner({
   const { t } = useTranslation();
   const format = useFormat();
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
+  const budgetMonthStartDay = useBudgetMonthStartDay();
 
   const { data: categories = { grouped: [], list: [] } } = useCategories();
   const { data: tags = [] } = useTags();
@@ -375,7 +377,7 @@ function CustomReportInner({
             ? monthUtils.currentDay()
             : interval === 'Yearly'
               ? monthUtils.currentYear()
-              : monthUtils.currentMonth();
+              : monthUtils.currentBudgetMonth(budgetMonthStartDay);
 
       const maxInterval =
         latestInterval > currentInterval ? latestInterval : currentInterval;
@@ -537,6 +539,7 @@ function CustomReportInner({
       balanceTypeOp,
       sortByOp,
       firstDayOfWeekIdx,
+      budgetMonthStartDay,
     });
   }, [
     startDate,
@@ -554,6 +557,7 @@ function CustomReportInner({
     trimIntervals,
     sortByOp,
     firstDayOfWeekIdx,
+    budgetMonthStartDay,
   ]);
 
   const getGraphData = useMemo(() => {
@@ -580,6 +584,7 @@ function CustomReportInner({
       graphType,
       firstDayOfWeekIdx,
       dateFormat,
+      budgetMonthStartDay,
     });
   }, [
     startDate,
@@ -604,6 +609,7 @@ function CustomReportInner({
     graphType,
     firstDayOfWeekIdx,
     dateFormat,
+    budgetMonthStartDay,
   ]);
   const graphData = useReport('default', getGraphData);
   const groupedData = useReport('grouped', getGroupData);

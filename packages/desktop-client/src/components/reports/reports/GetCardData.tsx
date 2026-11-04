@@ -24,6 +24,7 @@ import { ReportOptions } from '#components/reports/ReportOptions';
 import { createCustomSpreadsheet } from '#components/reports/spreadsheets/custom-spreadsheet';
 import { createGroupedSpreadsheet } from '#components/reports/spreadsheets/grouped-spreadsheet';
 import { useReport } from '#components/reports/useReport';
+import { useBudgetMonthStartDay } from '#hooks/useBudgetMonthStartDay';
 import { useDateFormat } from '#hooks/useDateFormat';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 
@@ -90,6 +91,7 @@ export function GetCardData({
   const { isNarrowWidth } = useResponsive();
   const [budgetType = 'envelope'] = useSyncedPref('budgetType');
   const dateFormat = useDateFormat() || 'MM/dd/yyyy';
+  const budgetMonthStartDay = useBudgetMonthStartDay();
 
   let startDate = report.startDate;
   let endDate = report.endDate;
@@ -143,8 +145,17 @@ export function GetCardData({
       balanceTypeOp: ReportOptions.balanceTypeMap.get(report.balanceType),
       firstDayOfWeekIdx,
       sortByOp: report.sortBy,
+      budgetMonthStartDay,
     });
-  }, [report, categories, startDate, endDate, firstDayOfWeekIdx, budgetType]);
+  }, [
+    report,
+    categories,
+    startDate,
+    endDate,
+    firstDayOfWeekIdx,
+    budgetType,
+    budgetMonthStartDay,
+  ]);
   const getGraphData = useMemo(() => {
     return createCustomSpreadsheet({
       startDate,
@@ -169,6 +180,7 @@ export function GetCardData({
       firstDayOfWeekIdx,
       sortByOp: report.sortBy,
       dateFormat,
+      budgetMonthStartDay,
     });
   }, [
     report,
@@ -183,6 +195,7 @@ export function GetCardData({
     // Load-bearing: without this the card keeps its old interval labels after
     // the date format preference changes, until something else invalidates it.
     dateFormat,
+    budgetMonthStartDay,
   ]);
   const graphData = useReport('default' + report.name, getGraphData);
   const groupedData = useReport('grouped' + report.name, getGroupData);

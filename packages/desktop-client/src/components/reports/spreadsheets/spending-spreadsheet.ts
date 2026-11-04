@@ -28,6 +28,8 @@ type createSpendingSpreadsheetProps = {
   conditionsOp?: 'and' | 'or';
   compare?: string;
   compareTo?: string;
+  // Budget months start on this day (1 = calendar months)
+  budgetMonthStartDay?: number;
   averageRange?: SpendingAverageRange;
   budgetType?: 'envelope' | 'tracking';
 };
@@ -74,6 +76,26 @@ export function getSpendingBudgetFilters({
   return [{ category: { $oneof: matchingCategoryIds } }];
 }
 
+// Index (0-27) of today's day within the compared month, or the last day
+// when the compared month isn't the current one.
+export function getSpendingTodayIndex(
+  compare: string,
+  budgetMonthStartDay = 1,
+) {
+  const today = monthUtils.currentDay();
+  if (compare !== monthUtils.currentBudgetMonth(budgetMonthStartDay)) {
+    return 27;
+  }
+  const dayNumber =
+    budgetMonthStartDay > 1
+      ? monthUtils.differenceInCalendarDays(
+          today,
+          monthUtils.budgetMonthDateRange(compare, budgetMonthStartDay).start,
+        ) + 1
+      : monthUtils.getDay(today);
+  return Math.min(dayNumber - 1, 27);
+}
+
 export function createSpendingSpreadsheet({
   conditions = [],
   conditionsOp,
@@ -81,8 +103,34 @@ export function createSpendingSpreadsheet({
   compareTo,
   averageRange,
   budgetType = 'envelope',
+  budgetMonthStartDay = 1,
 }: createSpendingSpreadsheetProps) {
-  const compareMonth = compare ?? monthUtils.currentMonth();
+  const useBudgetMonths = budgetMonthStartDay > 1;
+  // With budget months, each transaction is re-dated to the same day number
+  // of its budget month (day 1 = the start day), capped at 28 like the
+  // calendar view. The rest of the report then works unchanged.
+  const toReportDay = (date: string) => {
+    if (!useBudgetMonths) {
+      return date;
+    }
+    const month = monthUtils.budgetMonthFromDate(date, budgetMonthStartDay);
+    const { start } = monthUtils.budgetMonthDateRange(
+      month,
+      budgetMonthStartDay,
+    );
+    const index = monthUtils.differenceInCalendarDays(date, start) + 1;
+    return `${month}-${String(Math.min(index, 28)).padStart(2, '0')}`;
+  };
+  // The real date range a (budget) month covers
+  const queryRange = (fromMonth: string, toMonth: string) =>
+    useBudgetMonths
+      ? [
+          monthUtils.budgetMonthDateRange(fromMonth, budgetMonthStartDay).start,
+          monthUtils.budgetMonthDateRange(toMonth, budgetMonthStartDay).end,
+        ]
+      : [fromMonth + '-01', monthUtils.getMonthEnd(toMonth + '-01')];
+  const compareMonth =
+    compare ?? monthUtils.currentBudgetMonth(budgetMonthStartDay);
   const compareToMonth = compareTo ?? monthUtils.subMonths(compareMonth, 1);
   const endDate = monthUtils.getMonthEnd(compareMonth + '-01');
   const startDateTo = compareToMonth + '-01';
@@ -118,50 +166,61 @@ export function createSpendingSpreadsheet({
 
     const conditionsOpKey = conditionsOp === 'or' ? '$or' : '$and';
 
+    const [queryStart, queryEnd] = queryRange(
+      startDate.slice(0, 7),
+      compareMonth,
+    );
+    const [queryStartTo, queryEndTo] = queryRange(
+      compareToMonth,
+      compareToMonth,
+    );
+    const reDate = ({ data }) =>
+      data.map(row => ({ ...row, date: toReportDay(row.date) }));
+
     const [assets, debts] = await Promise.all([
       aqlQuery(
         makeQuery(
           'assets',
-          startDate,
-          endDate,
+          queryStart,
+          queryEnd,
           interval,
           conditionsOpKey,
           filters,
         ),
-      ).then(({ data }) => data),
+      ).then(reDate),
       aqlQuery(
         makeQuery(
           'debts',
-          startDate,
-          endDate,
+          queryStart,
+          queryEnd,
           interval,
           conditionsOpKey,
           filters,
         ),
-      ).then(({ data }) => data),
+      ).then(reDate),
     ]);
 
     const [assetsTo, debtsTo] = await Promise.all([
       aqlQuery(
         makeQuery(
           'assets',
-          startDateTo,
-          endDateTo,
+          queryStartTo,
+          queryEndTo,
           interval,
           conditionsOpKey,
           filters,
         ),
-      ).then(({ data }) => data),
+      ).then(reDate),
       aqlQuery(
         makeQuery(
           'debts',
-          startDateTo,
-          endDateTo,
+          queryStartTo,
+          queryEndTo,
           interval,
           conditionsOpKey,
           filters,
         ),
-      ).then(({ data }) => data),
+      ).then(reDate),
     ]);
 
     const overlapAssets =
@@ -311,7 +370,7 @@ export function createSpendingSpreadsheet({
               totalAssets: perIntervalAssets,
               totalTotals: perIntervalDebts + perIntervalAssets,
               cumulative:
-                intervalItem <= monthUtils.currentDay()
+                intervalItem <= toReportDay(monthUtils.currentDay())
                   ? cumulativeDebts + cumulativeAssets
                   : null,
             });

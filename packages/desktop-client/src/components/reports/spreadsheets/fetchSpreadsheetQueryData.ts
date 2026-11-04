@@ -1,3 +1,4 @@
+import * as monthUtils from '@actual-app/core/shared/months';
 import type {
   balanceTypeOpType,
   CategoryEntity,
@@ -25,6 +26,7 @@ export async function fetchSpreadsheetQueryData({
   filters,
   budgetType,
   groupBy,
+  budgetMonthStartDay = 1,
 }: {
   balanceTypeOp: balanceTypeOpType | undefined;
   startDate: string;
@@ -38,6 +40,7 @@ export async function fetchSpreadsheetQueryData({
   filters: unknown[];
   budgetType?: SyncedPrefs['budgetType'];
   groupBy?: string;
+  budgetMonthStartDay?: number;
 }): Promise<{ assets: QueryDataEntity[]; debts: QueryDataEntity[] }> {
   if (balanceTypeOp === 'totalBudgeted') {
     return fetchBudgetData({
@@ -62,6 +65,7 @@ export async function fetchSpreadsheetQueryData({
         conditionsOpKey,
         filters,
         groupBy,
+        budgetMonthStartDay,
       ),
     ).then(({ data }) => data),
     aqlQuery(
@@ -73,9 +77,21 @@ export async function fetchSpreadsheetQueryData({
         conditionsOpKey,
         filters,
         groupBy,
+        budgetMonthStartDay,
       ),
     ).then(({ data }) => data),
   ]);
+
+  if (interval === 'Monthly' && budgetMonthStartDay > 1) {
+    const toBudgetMonth = (row: QueryDataEntity) => ({
+      ...row,
+      date: monthUtils.budgetMonthFromDate(row.date, budgetMonthStartDay),
+    });
+    return {
+      assets: assets.map(toBudgetMonth),
+      debts: debts.map(toBudgetMonth),
+    };
+  }
 
   return { assets, debts };
 }

@@ -240,3 +240,17 @@ describe('boundMonthRange', () => {
     );
   });
 });
+
+describe('calculateSpendingReportTimeRange with budget months', () => {
+  it('keeps static months unchanged', () => {
+    const [compare, compareTo] = calculateSpendingReportTimeRange({
+      compare: '2016-10',
+      compareTo: '2016-09',
+      isLive: false,
+      budgetMonthStartDay: 27,
+    });
+
+    expect(compare).toBe('2016-10');
+    expect(compareTo).toBe('2016-09');
+  });
+});

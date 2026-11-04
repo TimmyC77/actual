@@ -41,9 +41,13 @@ import {
   spendingAverageRangeFromKey,
   spendingAverageRangeToKey,
 } from '#components/reports/spendingAverageRange';
-import { createSpendingSpreadsheet } from '#components/reports/spreadsheets/spending-spreadsheet';
+import {
+  createSpendingSpreadsheet,
+  getSpendingTodayIndex,
+} from '#components/reports/spreadsheets/spending-spreadsheet';
 import { useReport } from '#components/reports/useReport';
 import { fromDateRepr } from '#components/reports/util';
+import { useBudgetMonthStartDay } from '#hooks/useBudgetMonthStartDay';
 import { useDashboardWidget } from '#hooks/useDashboardWidget';
 import { useFormat } from '#hooks/useFormat';
 import { useLocale } from '#hooks/useLocale';
@@ -78,6 +82,8 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
   const { t } = useTranslation();
   const format = useFormat();
   const [budgetTypePref] = useSyncedPref('budgetType');
+  const budgetMonthStartDay = useBudgetMonthStartDay();
+  const currentMonth = monthUtils.currentBudgetMonth(budgetMonthStartDay);
   const budgetType: 'envelope' | 'tracking' =
     budgetTypePref === 'tracking' ? 'tracking' : 'envelope';
 
@@ -97,9 +103,10 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
   const [allIntervals, setAllIntervals] = useState(emptyIntervals);
 
   const initialReportMode = widget?.meta?.mode ?? 'single-month';
-  const [initialCompare, initialCompareTo] = calculateSpendingReportTimeRange(
-    widget?.meta ?? {},
-  );
+  const [initialCompare, initialCompareTo] = calculateSpendingReportTimeRange({
+    ...widget?.meta,
+    budgetMonthStartDay,
+  });
   const [compare, setCompare] = useState(initialCompare);
   const [compareTo, setCompareTo] = useState(initialCompareTo);
   const [averageRange, setAverageRange] = useState(
@@ -114,7 +121,6 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
       const earliestTrans = await send('get-earliest-transaction');
       const latestTrans = await send('get-latest-transaction');
 
-      const currentMonth = monthUtils.currentMonth();
       let earliestMonth = earliestTrans
         ? monthUtils.monthFromDate(d.parseISO(fromDateRepr(earliestTrans.date)))
         : currentMonth;
@@ -146,7 +152,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
       setAllIntervals(allMonths);
     }
     void run();
-  }, [locale]);
+  }, [locale, currentMonth]);
 
   const getGraphData = useMemo(
     () =>
@@ -157,8 +163,17 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
         compareTo,
         averageRange,
         budgetType,
+        budgetMonthStartDay,
       }),
-    [conditions, conditionsOp, compare, compareTo, averageRange, budgetType],
+    [
+      conditions,
+      conditionsOp,
+      compare,
+      compareTo,
+      averageRange,
+      budgetType,
+      budgetMonthStartDay,
+    ],
   );
 
   const data = useReport('default', getGraphData);
@@ -211,19 +226,12 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
     (data.averageRange?.months.length ?? 0) > 0 &&
     data.intervalData.some(interval => Math.abs(interval.average) > 0);
 
-  const todayDay =
-    compare !== monthUtils.currentMonth()
-      ? 27
-      : monthUtils.getDay(monthUtils.currentDay()) - 1 >= 28
-        ? 27
-        : monthUtils.getDay(monthUtils.currentDay()) - 1;
+  const todayDay = getSpendingTodayIndex(compare, budgetMonthStartDay);
 
   const showCompareTo =
-    compareTo === monthUtils.currentMonth() ||
-    Math.abs(data.intervalData[27].compareTo) > 0;
+    compareTo === currentMonth || Math.abs(data.intervalData[27].compareTo) > 0;
   const showCompare =
-    compare === monthUtils.currentMonth() ||
-    Math.abs(data.intervalData[27].compare) > 0;
+    compare === currentMonth || Math.abs(data.intervalData[27].compare) > 0;
   const averageRangeLabel = getSpendingAverageRangeLabel(averageRange, t);
   const averageRangeOptions = getSpendingAverageRangeOptions(t);
   const comparisonValue =
@@ -261,6 +269,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
         compareTo,
         isLive: true,
         mode: reportMode,
+        budgetMonthStartDay,
       });
       setCompare(liveCompare);
       setCompareTo(liveCompareTo);
@@ -554,7 +563,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
                         style={{ marginBottom: 5, minWidth: 210 }}
                         left={
                           <Block>
-                            {compare === monthUtils.currentMonth()
+                            {compare === currentMonth
                               ? t('Spent {{monthYearFormatted}} MTD', {
                                   monthYearFormatted: monthUtils.format(
                                     compare,
@@ -589,7 +598,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
                         style={{ marginBottom: 5, minWidth: 210 }}
                         left={
                           <Block>
-                            {compareTo === monthUtils.currentMonth()
+                            {compareTo === currentMonth
                               ? t('Spent {{monthYearFormatted}} MTD:', {
                                   monthYearFormatted: monthUtils.format(
                                     compareTo,
@@ -624,7 +633,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
                       style={{ marginBottom: 5, minWidth: 210 }}
                       left={
                         <Block>
-                          {compare === monthUtils.currentMonth() ? (
+                          {compare === currentMonth ? (
                             <Trans>Budgeted MTD</Trans>
                           ) : (
                             <Trans>Budgeted</Trans>
@@ -652,8 +661,7 @@ function SpendingInternal({ widget }: SpendingInternalProps) {
                         <Block>
                           {getSpendingAverageSummaryLabel({
                             averageRange,
-                            isCurrentMonth:
-                              compare === monthUtils.currentMonth(),
+                            isCurrentMonth: compare === currentMonth,
                             t,
                           })}
                         </Block>

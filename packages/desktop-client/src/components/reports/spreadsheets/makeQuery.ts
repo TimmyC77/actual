@@ -1,3 +1,4 @@
+import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import type { ObjectExpression } from '@actual-app/core/shared/query';
 
@@ -11,9 +12,13 @@ export function makeQuery(
   conditionsOpKey: string,
   filters: unknown[],
   groupBy?: string,
+  budgetMonthStartDay = 1,
 ) {
+  // Budget months that don't start on the 1st are grouped by day here and
+  // folded into budget months by the caller.
+  const useBudgetMonths = interval === 'Monthly' && budgetMonthStartDay > 1;
   const intervalGroup =
-    interval === 'Monthly'
+    interval === 'Monthly' && !useBudgetMonths
       ? { $month: '$date' }
       : interval === 'Yearly'
         ? { $year: '$date' }
@@ -30,10 +35,29 @@ export function makeQuery(
     })
     //Apply month range filters
     .filter({
-      $and: [
-        { date: { $transform: intervalFilter, $gte: startDate } },
-        { date: { $transform: intervalFilter, $lte: endDate } },
-      ],
+      $and: useBudgetMonths
+        ? [
+            {
+              date: {
+                $gte: monthUtils.budgetMonthDateRange(
+                  startDate,
+                  budgetMonthStartDay,
+                ).start,
+              },
+            },
+            {
+              date: {
+                $lte: monthUtils.budgetMonthDateRange(
+                  endDate,
+                  budgetMonthStartDay,
+                ).end,
+              },
+            },
+          ]
+        : [
+            { date: { $transform: intervalFilter, $gte: startDate } },
+            { date: { $transform: intervalFilter, $lte: endDate } },
+          ],
     })
     //Show assets or debts
     .filter(

@@ -35,7 +35,12 @@ export function createGroupedSpreadsheet({
   balanceTypeOp,
   sortByOp,
   firstDayOfWeekIdx,
+  budgetMonthStartDay = 1,
 }: createCustomSpreadsheetProps) {
+  const effectiveStartDay =
+    interval === 'Monthly' && balanceTypeOp !== 'totalBudgeted'
+      ? budgetMonthStartDay
+      : 1;
   const [categoryList, categoryGroup] = categoryLists(categories);
 
   return async (
@@ -67,6 +72,7 @@ export function createGroupedSpreadsheet({
       conditionsOpKey,
       filters,
       budgetType,
+      budgetMonthStartDay: effectiveStartDay,
     }));
 
     if (interval === 'Weekly' && balanceTypeOp !== 'totalBudgeted') {
@@ -104,6 +110,7 @@ export function createGroupedSpreadsheet({
           showUncategorized,
           startDate,
           endDate,
+          budgetMonthStartDay: effectiveStartDay,
         });
 
         const stackedCategories =
@@ -120,6 +127,7 @@ export function createGroupedSpreadsheet({
               showUncategorized,
               startDate,
               endDate,
+              budgetMonthStartDay: effectiveStartDay,
             });
             return { ...calc };
           });

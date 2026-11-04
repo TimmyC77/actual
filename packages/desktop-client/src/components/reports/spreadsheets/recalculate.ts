@@ -27,6 +27,8 @@ type recalculateProps = {
   showUncategorized?: boolean;
   startDate: string;
   endDate: string;
+  // Set when Monthly intervals are budget months starting on this day
+  budgetMonthStartDay?: number;
 };
 
 export function recalculate({
@@ -40,6 +42,7 @@ export function recalculate({
   showUncategorized,
   startDate,
   endDate,
+  budgetMonthStartDay = 1,
 }: recalculateProps): GroupedEntity {
   let totalAssets = 0;
   let totalDebts = 0;
@@ -96,11 +99,20 @@ export function recalculate({
         totalTotals: intervalTotals,
         totalBudgeted: intervalTotals,
         change,
-        intervalStartDate: index === 0 ? startDate : intervalItem,
+        intervalStartDate:
+          budgetMonthStartDay > 1
+            ? monthUtils.budgetMonthDateRange(intervalItem, budgetMonthStartDay)
+                .start
+            : index === 0
+              ? startDate
+              : intervalItem,
         intervalEndDate:
-          index + 1 === intervals.length
-            ? endDate
-            : monthUtils.subDays(intervals[index + 1], 1),
+          budgetMonthStartDay > 1
+            ? monthUtils.budgetMonthDateRange(intervalItem, budgetMonthStartDay)
+                .end
+            : index + 1 === intervals.length
+              ? endDate
+              : monthUtils.subDays(intervals[index + 1], 1),
       });
 
       return arr;

@@ -66,6 +66,7 @@ export type createCustomSpreadsheetProps = {
   graphType?: string;
   firstDayOfWeekIdx?: SyncedPrefs['firstDayOfWeekIdx'];
   dateFormat?: SyncedPrefs['dateFormat'];
+  budgetMonthStartDay?: number;
 };
 
 export function createCustomSpreadsheet({
@@ -91,7 +92,16 @@ export function createCustomSpreadsheet({
   graphType,
   firstDayOfWeekIdx,
   dateFormat,
+  budgetMonthStartDay = 1,
 }: createCustomSpreadsheetProps) {
+  // Monthly intervals follow the budget's months when they start on a day
+  // other than the 1st. Budgeted amounts are already stored per budget month.
+  const useBudgetMonths =
+    interval === 'Monthly' &&
+    budgetMonthStartDay > 1 &&
+    balanceTypeOp !== 'totalBudgeted';
+  const budgetMonthRange = (month: string) =>
+    monthUtils.budgetMonthDateRange(month, budgetMonthStartDay);
   const [categoryList, categoryGroup] = categoryLists(categories);
   const [initialGroups, groupByLabel] = groupBySelections(
     groupBy,
@@ -147,6 +157,7 @@ export function createCustomSpreadsheet({
       filters,
       budgetType,
       groupBy,
+      budgetMonthStartDay: useBudgetMonths ? budgetMonthStartDay : 1,
     }));
 
     if (groupBy === 'Tag') {
@@ -295,9 +306,14 @@ export function createCustomSpreadsheet({
             getIntervalFormat(interval, dateFormat),
           ),
           ...stacked,
-          intervalStartDate: index === 0 ? startDate : intervalItem,
-          intervalEndDate:
-            index + 1 === intervals.length
+          intervalStartDate: useBudgetMonths
+            ? budgetMonthRange(intervalItem).start
+            : index === 0
+              ? startDate
+              : intervalItem,
+          intervalEndDate: useBudgetMonths
+            ? budgetMonthRange(intervalItem).end
+            : index + 1 === intervals.length
               ? endDate
               : monthUtils.subDays(intervals[index + 1], 1),
           totalAssets: perIntervalAssets,
@@ -327,6 +343,7 @@ export function createCustomSpreadsheet({
         showUncategorized,
         startDate,
         endDate,
+        budgetMonthStartDay: useBudgetMonths ? budgetMonthStartDay : 1,
       });
       return { ...calc };
     });
@@ -370,8 +387,11 @@ export function createCustomSpreadsheet({
       data: sortedCalcDataFiltered,
       intervalData: trimmedIntervalData,
       legend,
-      startDate,
-      endDate,
+      // Day-level bounds so drill-downs cover the whole budget months
+      startDate: useBudgetMonths
+        ? budgetMonthRange(startDate).start
+        : startDate,
+      endDate: useBudgetMonths ? budgetMonthRange(endDate).end : endDate,
       totalAssets,
       totalDebts,
       netAssets,

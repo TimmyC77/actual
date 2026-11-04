@@ -59,7 +59,11 @@ export function showActivity({
       ? 'dayFromDate'
       : (((ReportOptions.intervalMap.get(interval) || 'Day').toLowerCase() +
           'FromDate') as 'dayFromDate' | 'monthFromDate' | 'yearFromDate');
-  const isDateOp = interval === 'Weekly' || type !== 'time';
+  // Budget-month intervals pass full day ranges (see custom-spreadsheet)
+  const isDateOp =
+    interval === 'Weekly' ||
+    type !== 'time' ||
+    monthUtils.isValidYearMonthDay(startDate);
   const drilldownFilter =
     field === 'tag' && bucketTagNames
       ? {
