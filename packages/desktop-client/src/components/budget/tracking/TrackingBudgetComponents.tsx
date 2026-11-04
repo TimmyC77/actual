@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import React, { memo, useRef, useState } from 'react';
 import type { ComponentProps, CSSProperties } from 'react';
 import { Trans } from 'react-i18next';
@@ -14,7 +13,6 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import { css } from '@emotion/css';
 import { t } from 'i18next';
 
@@ -25,6 +23,8 @@ import { NotesButton } from '#components/NotesButton';
 import { CellValue, CellValueText } from '#components/spreadsheet/CellValue';
 import { Field, SheetCell } from '#components/table';
 import type { SheetCellProps } from '#components/table';
+// @ts-strict-ignore
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useCategoryScheduleGoalTemplateIndicator } from '#hooks/useCategoryScheduleGoalTemplateIndicator';
 import { useFormat } from '#hooks/useFormat';
 import { useNavigate } from '#hooks/useNavigate';
@@ -140,6 +140,7 @@ export const GroupMonth = memo(function GroupMonth({
   month,
   group,
 }: CategoryGroupMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { id } = group;
 
   return (
@@ -147,9 +148,10 @@ export const GroupMonth = memo(function GroupMonth({
       style={{
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetHeaderCurrentMonth
-          : theme.budgetHeaderOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetHeaderCurrentMonth
+            : theme.budgetHeaderOtherMonth,
       }}
     >
       <TrackingSheetCell
@@ -200,6 +202,7 @@ export const CategoryMonth = memo(function CategoryMonth({
   onBudgetAction,
   onShowActivity,
 }: CategoryMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const [menuOpen, setMenuOpen] = useState(false);
   const triggerRef = useRef(null);
   const format = useFormat();
@@ -230,9 +233,10 @@ export const CategoryMonth = memo(function CategoryMonth({
       style={{
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetCurrentMonth
-          : theme.budgetOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetCurrentMonth
+            : theme.budgetOtherMonth,
         '& .hover-visible': {
           opacity: 0,
           transition: 'opacity .25s',

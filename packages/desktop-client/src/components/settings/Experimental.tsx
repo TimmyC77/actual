@@ -273,6 +273,12 @@ export function ExperimentalFeatures() {
       >
         <Trans>Monte Carlo Analysis Report</Trans>
       </FeatureToggle>
+      <FeatureToggle
+        flag="customBudgetMonthStart"
+        feedbackLink="https://github.com/actualbudget/actual/issues/5064"
+      >
+        <Trans>Custom budget month start day</Trans>
+      </FeatureToggle>
       {isUsingServer && (
         <FeatureToggle
           flag="enableBanking"

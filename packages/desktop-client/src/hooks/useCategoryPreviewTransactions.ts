@@ -8,6 +8,7 @@ import type {
 
 import { categoryBalance } from '#spreadsheet/bindings';
 
+import { useBudgetMonthStartDay } from './useBudgetMonthStartDay';
 import { useCategory } from './useCategory';
 import { useCategoryScheduleGoalTemplates } from './useCategoryScheduleGoalTemplates';
 import { usePreviewTransactions } from './usePreviewTransactions';
@@ -27,6 +28,7 @@ export function useCategoryPreviewTransactions({
   month,
 }: UseCategoryPreviewTransactionsProps): UseCategoryPreviewTransactionsResult {
   const { data: category } = useCategory(categoryId);
+  const startDay = useBudgetMonthStartDay();
   const { schedules } = useCategoryScheduleGoalTemplates({
     category,
   });
@@ -35,13 +37,17 @@ export function useCategoryPreviewTransactions({
     () =>
       new Set(
         schedules
-          .filter(schedule => monthUtils.getMonth(schedule.next_date) === month)
+          .filter(
+            schedule =>
+              monthUtils.budgetMonthFromDate(schedule.next_date, startDay) ===
+              month,
+          )
           .map(schedule => schedule.id),
       ),
-    [month, schedules],
+    [month, schedules, startDay],
   );
   const categoryBalanceValue = useSheetValue<'category', 'balance'>(
-    categoryBalance(categoryId, month),
+    categoryBalance(categoryId, month, startDay),
   );
 
   const categorySchedulesFilter = useCallback(

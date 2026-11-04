@@ -11,7 +11,6 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import type {
   CategoryEntity,
@@ -23,6 +22,7 @@ import { MOBILE_NAV_HEIGHT } from '#components/mobile/MobileNavTabs';
 import { PullToRefresh } from '#components/mobile/PullToRefresh';
 import { PrivacyFilter } from '#components/PrivacyFilter';
 import { CellValue } from '#components/spreadsheet/CellValue';
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { SchedulesProvider } from '#hooks/useCachedSchedules';
 import { useFormat } from '#hooks/useFormat';
 import { useLocalPref } from '#hooks/useLocalPref';
@@ -418,6 +418,7 @@ function BudgetTableHeader({
   showSpentColumn,
   toggleSpentColumn,
 }: BudgetTableHeaderProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { t } = useTranslation();
   const format = useFormat();
   const [budgetType = 'envelope'] = useSyncedPref('budgetType');
@@ -447,9 +448,10 @@ function BudgetTableHeader({
         flexShrink: 0,
         padding: '10px 15px',
         paddingLeft: 10,
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetHeaderCurrentMonth
-          : theme.budgetHeaderOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetHeaderCurrentMonth
+            : theme.budgetHeaderOtherMonth,
         borderBottomWidth: 1,
         borderColor: theme.tableBorder,
       }}
@@ -464,7 +466,7 @@ function BudgetTableHeader({
       >
         {budgetType === 'tracking' ? (
           <Saved
-            projected={month >= monthUtils.currentMonth()}
+            projected={month >= currentBudgetMonth}
             onPress={onShowBudgetSummary}
             show3Columns={show3Columns}
           />

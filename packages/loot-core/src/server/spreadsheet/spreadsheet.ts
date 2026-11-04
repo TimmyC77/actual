@@ -30,6 +30,7 @@ export class Spreadsheet {
   _meta: {
     createdMonths: Set<string>;
     budgetType: BudgetType;
+    budgetMonthStartDay?: number;
   };
   cacheBarrier;
   computeQueue;

@@ -11,10 +11,10 @@ import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
 import type { BudgetType } from '@actual-app/core/server/prefs';
-import * as monthUtils from '@actual-app/core/shared/months';
 import type { IntegerAmount } from '@actual-app/core/shared/util';
 import type { CategoryEntity } from '@actual-app/core/types/models';
 
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useCategoriesById } from '#hooks/useCategories';
 import { useFormat } from '#hooks/useFormat';
 import { useNavigate } from '#hooks/useNavigate';
@@ -225,6 +225,7 @@ export function ExpenseCategoryListItem({
   ...props
 }: ExpenseCategoryListItemProps) {
   const { value: category } = props;
+  const currentBudgetMonth = useCurrentBudgetMonth();
 
   const { t } = useTranslation();
   const [budgetType = 'envelope'] = useSyncedPref('budgetType');
@@ -464,9 +465,10 @@ export function ExpenseCategoryListItem({
           paddingRight: 5,
           borderBottomWidth: 1,
           opacity: isHidden ? 0.5 : undefined,
-          backgroundColor: monthUtils.isCurrentMonth(month)
-            ? theme.budgetCurrentMonth
-            : theme.budgetOtherMonth,
+          backgroundColor:
+            month === currentBudgetMonth
+              ? theme.budgetCurrentMonth
+              : theme.budgetOtherMonth,
         }}
       >
         <ExpenseCategoryName

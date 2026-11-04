@@ -11,13 +11,13 @@ import type { CSSProperties } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import type { CategoryGroupEntity } from '@actual-app/core/types/models';
 import { css } from '@emotion/css';
 import { AutoTextSize } from 'auto-text-size';
 
 import { PrivacyFilter } from '#components/PrivacyFilter';
 import { CellValue } from '#components/spreadsheet/CellValue';
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useFormat } from '#hooks/useFormat';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 import { envelopeBudget, trackingBudget } from '#spreadsheet/bindings';
@@ -119,6 +119,7 @@ function IncomeGroupHeader({
   onToggleCollapse,
   style,
 }: IncomeGroupHeaderProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   return (
     <View
       data-testid="category-group-row"
@@ -133,9 +134,10 @@ function IncomeGroupHeader({
         paddingLeft: 5,
         paddingRight: 5,
         opacity: group.hidden ? 0.5 : undefined,
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetHeaderCurrentMonth
-          : theme.budgetHeaderOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetHeaderCurrentMonth
+            : theme.budgetHeaderOtherMonth,
         ...style,
       }}
     >

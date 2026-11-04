@@ -9,9 +9,9 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import type { CategoryEntity } from '@actual-app/core/types/models';
 
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useNavigate } from '#hooks/useNavigate';
 import { useSyncedPref } from '#hooks/useSyncedPref';
 import { pushModal } from '#modals/modalsSlice';
@@ -181,6 +181,7 @@ export function IncomeCategoryListItem({
   onBudgetAction,
   ...props
 }: IncomeCategoryListItemProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { value: category } = props;
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -255,9 +256,10 @@ export function IncomeCategoryListItem({
           paddingRight: 5,
           borderBottomWidth: 1,
           opacity: category.hidden ? 0.5 : undefined,
-          backgroundColor: monthUtils.isCurrentMonth(month)
-            ? theme.budgetCurrentMonth
-            : theme.budgetOtherMonth,
+          backgroundColor:
+            month === currentBudgetMonth
+              ? theme.budgetCurrentMonth
+              : theme.budgetOtherMonth,
         }}
       >
         <IncomeCategoryName category={category} onEdit={onEdit} />

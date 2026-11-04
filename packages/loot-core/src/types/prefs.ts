@@ -12,7 +12,8 @@ export type FeatureFlag =
   | 'sankeyReport'
   | 'akahuBankSync'
   | 'mobileCalculator'
-  | 'monteCarloReport';
+  | 'monteCarloReport'
+  | 'customBudgetMonthStart';
 
 /**
  * Cross-device preferences. These sync across devices when they are changed.
@@ -20,6 +21,7 @@ export type FeatureFlag =
 export type SyncedPrefs = Partial<
   Record<
     | 'budgetType'
+    | 'budgetMonthStartDay'
     | 'upcomingScheduledTransactionLength'
     | 'firstDayOfWeekIdx'
     | 'dateFormat'

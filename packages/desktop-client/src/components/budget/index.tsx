@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import React, { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import type { ComponentType } from 'react';
 
@@ -21,6 +20,11 @@ import {
   useSaveCategoryMutation,
   useSortCategoriesMutation,
 } from '#budget';
+// @ts-strict-ignore
+import {
+  useBudgetMonthStartDay,
+  useCurrentBudgetMonth,
+} from '#hooks/useBudgetMonthStartDay';
 import { useCategories } from '#hooks/useCategories';
 import { useGlobalPref } from '#hooks/useGlobalPref';
 import { useLocalPref } from '#hooks/useLocalPref';
@@ -37,7 +41,9 @@ import { TrackingBudgetProvider } from './tracking/TrackingBudgetContext';
 import { prewarmAllMonths, prewarmMonth } from './util';
 
 export function Budget() {
-  const currentMonth = monthUtils.currentMonth();
+  const currentBudgetMonth = useCurrentBudgetMonth();
+  const budgetMonthStartDay = useBudgetMonthStartDay();
+  const currentMonth = currentBudgetMonth;
   const spreadsheet = useSpreadsheet();
   const navigate = useNavigate();
   const [summaryCollapsed, setSummaryCollapsedPref] = useLocalPref(
@@ -133,13 +139,26 @@ export function Budget() {
   const onShowActivity = (categoryId, month) => {
     const filterConditions = [
       { field: 'category', op: 'is', value: categoryId, type: 'id' },
-      {
-        field: 'date',
-        op: 'is',
-        value: month,
-        options: { month: true },
-        type: 'date',
-      },
+      ...(budgetMonthStartDay > 1
+        ? (() => {
+            const { start, end } = monthUtils.budgetMonthDateRange(
+              month,
+              budgetMonthStartDay,
+            );
+            return [
+              { field: 'date', op: 'gte', value: start, type: 'date' },
+              { field: 'date', op: 'lte', value: end, type: 'date' },
+            ];
+          })()
+        : [
+            {
+              field: 'date',
+              op: 'is',
+              value: month,
+              options: { month: true },
+              type: 'date',
+            },
+          ]),
     ];
     void navigate('/accounts', {
       state: {

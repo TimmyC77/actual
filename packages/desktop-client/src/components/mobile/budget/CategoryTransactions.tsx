@@ -8,6 +8,7 @@ import type {
 } from '@actual-app/core/types/models';
 
 import { TransactionListWithBalances } from '#components/mobile/transactions/TransactionListWithBalances';
+import { useBudgetMonthStartDay } from '#hooks/useBudgetMonthStartDay';
 import { SchedulesProvider } from '#hooks/useCachedSchedules';
 import { useCategoryPreviewTransactions } from '#hooks/useCategoryPreviewTransactions';
 import { useDateFormat } from '#hooks/useDateFormat';
@@ -44,14 +45,15 @@ function TransactionListWithPreviews({
   month,
 }: TransactionListWithPreviewsProps) {
   const navigate = useNavigate();
+  const startDay = useBudgetMonthStartDay();
 
   const baseTransactionsQuery = useCallback(
     () =>
       q('transactions')
         .options({ splits: 'inline' })
-        .filter(getCategoryMonthFilter(category, month))
+        .filter(getCategoryMonthFilter(category, month, startDay))
         .select('*'),
-    [category, month],
+    [category, month, startDay],
   );
 
   const [transactionsQuery, setTransactionsQuery] = useState(
@@ -84,11 +86,16 @@ function TransactionListWithPreviews({
     [navigate],
   );
 
-  const balance = bindings.categoryBalance(category.id, month);
-  const balanceCleared = bindings.categoryBalanceCleared(category.id, month);
+  const balance = bindings.categoryBalance(category.id, month, startDay);
+  const balanceCleared = bindings.categoryBalanceCleared(
+    category.id,
+    month,
+    startDay,
+  );
   const balanceUncleared = bindings.categoryBalanceUncleared(
     category.id,
     month,
+    startDay,
   );
 
   const { previewTransactions, isLoading: isPreviewTransactionsLoading } =
@@ -121,9 +128,13 @@ function TransactionListWithPreviews({
   );
 }
 
-function getCategoryMonthFilter(category: CategoryEntity, month: string) {
+function getCategoryMonthFilter(
+  category: CategoryEntity,
+  month: string,
+  startDay: number,
+) {
   return {
     category: category.id,
-    date: { $transform: '$month', $eq: month },
+    date: bindings.budgetMonthDateFilter(month, startDay),
   };
 }

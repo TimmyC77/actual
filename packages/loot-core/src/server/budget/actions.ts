@@ -11,6 +11,8 @@ import { integerToCurrency, safeNumber } from '#shared/util';
 import type { IntegerAmount } from '#shared/util';
 import type { CategoryEntity } from '#types/models';
 
+import { budgetMonthSql, getBudgetMonthStartDay } from './month-start';
+
 export async function getSheetValue(
   sheetName: string,
   cell: string,
@@ -461,6 +463,7 @@ async function getFirstActivityMonth({
 }): Promise<string | null> {
   const table = getBudgetTable();
   const endDbMonth = dbMonth(endMonth);
+  const txMonth = budgetMonthSql('t.date', getBudgetMonthStartDay());
   const firstActivity = await db.first<{ month: number | null }>(
     `SELECT MIN(month) AS month
        FROM (
@@ -468,11 +471,11 @@ async function getFirstActivityMonth({
            FROM ${table}
           WHERE category = ? AND month <= ?
          UNION ALL
-         SELECT CAST(t.date / 100 AS INTEGER) AS month
+         SELECT ${txMonth} AS month
            FROM v_transactions_internal_alive t
            LEFT JOIN accounts a ON a.id = t.account
           WHERE t.category = ?
-            AND CAST(t.date / 100 AS INTEGER) <= ?
+            AND ${txMonth} <= ?
             AND a.offbudget = 0
        )`,
     [categoryId, endDbMonth, categoryId, endDbMonth],

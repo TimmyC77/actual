@@ -38,3 +38,40 @@ test('isValidYearMonthDay validates the day against the month and year', () => {
   expect(monthUtils.isValidYearMonthDay('2024-02-00')).toBe(false);
   expect(monthUtils.isValidYearMonthDay('2024-02')).toBe(false);
 });
+
+describe('budget month start day', () => {
+  test('calendar months when the start day is 1', () => {
+    expect(monthUtils.budgetMonthBounds('2026-11', 1)).toEqual(
+      monthUtils.bounds('2026-11'),
+    );
+    expect(monthUtils.budgetMonthFromDate('2026-10-31', 1)).toBe('2026-10');
+  });
+
+  test('budget month bounds start in the previous month', () => {
+    expect(monthUtils.budgetMonthBounds('2026-11', 27)).toEqual({
+      start: 20261027,
+      end: 20261126,
+    });
+    expect(monthUtils.budgetMonthDateRange('2027-01', 27)).toEqual({
+      start: '2026-12-27',
+      end: '2027-01-26',
+    });
+    expect(monthUtils.budgetMonthDateRange('2027-03', 28)).toEqual({
+      start: '2027-02-28',
+      end: '2027-03-27',
+    });
+  });
+
+  test('dates map to the budget month they fall in', () => {
+    expect(monthUtils.budgetMonthFromDate('2026-10-26', 27)).toBe('2026-10');
+    expect(monthUtils.budgetMonthFromDate('2026-10-27', 27)).toBe('2026-11');
+    expect(monthUtils.budgetMonthFromDate('2026-12-31', 27)).toBe('2027-01');
+  });
+
+  test('normalizes stored start days', () => {
+    expect(monthUtils.normalizeBudgetMonthStartDay('27')).toBe(27);
+    expect(monthUtils.normalizeBudgetMonthStartDay(undefined)).toBe(1);
+    expect(monthUtils.normalizeBudgetMonthStartDay('31')).toBe(1);
+    expect(monthUtils.normalizeBudgetMonthStartDay('abc')).toBe(1);
+  });
+});

@@ -29,6 +29,7 @@ import { useDispatch, useSelector } from '#redux';
 
 import { AuthSettings } from './AuthSettings';
 import { Backups } from './Backups';
+import { BudgetMonthStartSettings } from './BudgetMonthStartSettings';
 import { BudgetTypeSettings } from './BudgetTypeSettings';
 import { CurrencySettings } from './Currency';
 import { EncryptionSettings } from './Encryption';
@@ -270,6 +271,9 @@ export function GeneralSettings() {
   const { t } = useTranslation();
   const { isNarrowWidth } = useResponsive();
   const isCurrencyExperimentalEnabled = useFeatureFlag('currency');
+  const isCustomBudgetMonthStartEnabled = useFeatureFlag(
+    'customBudgetMonthStart',
+  );
   const serverURL = useServerURL();
 
   return (
@@ -282,6 +286,7 @@ export function GeneralSettings() {
       <LanguageSettings />
       <SettingsGroup title={t('Budget')}>
         <BudgetTypeSettings />
+        {isCustomBudgetMonthStartEnabled && <BudgetMonthStartSettings />}
       </SettingsGroup>
       {serverURL && (
         <SettingsGroup title={t('Security')}>

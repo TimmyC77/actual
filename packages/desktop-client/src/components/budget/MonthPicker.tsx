@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import React, { useState } from 'react';
 import type { CSSProperties } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +13,8 @@ import { View } from '@actual-app/components/view';
 import * as monthUtils from '@actual-app/core/shared/months';
 
 import { Link } from '#components/common/Link';
+// @ts-strict-ignore
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useLocale } from '#hooks/useLocale';
 import { useResizeObserver } from '#hooks/useResizeObserver';
 
@@ -34,12 +35,13 @@ export const MonthPicker = ({
   style,
   onSelect,
 }: MonthPickerProps) => {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const locale = useLocale();
   const { t } = useTranslation();
   const [hoverId, setHoverId] = useState(null);
   const [targetMonthCount, setTargetMonthCount] = useState(12);
 
-  const currentMonth = monthUtils.currentMonth();
+  const currentMonth = currentBudgetMonth;
   const firstSelectedMonth = startMonth;
 
   const lastSelectedMonth = monthUtils.addMonths(

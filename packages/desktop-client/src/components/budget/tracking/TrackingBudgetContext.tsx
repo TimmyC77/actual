@@ -1,7 +1,7 @@
 import React, { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 
-import * as monthUtils from '@actual-app/core/shared/months';
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 
 type TrackingBudgetContextDefinition = {
   summaryCollapsed: boolean;
@@ -35,7 +35,8 @@ export function TrackingBudgetProvider({
   onToggleSummaryCollapse,
   children,
 }: TrackingBudgetProviderProps) {
-  const currentMonth = monthUtils.currentMonth();
+  const currentBudgetMonth = useCurrentBudgetMonth();
+  const currentMonth = currentBudgetMonth;
 
   return (
     <TrackingBudgetContext.Provider

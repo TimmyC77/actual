@@ -9,6 +9,7 @@ import * as fs from '#platform/server/fs';
 import { logger } from '#platform/server/log';
 import { createApp } from '#server/app';
 import * as budget from '#server/budget/base';
+import { readBudgetMonthStartDay } from '#server/budget/month-start';
 import * as cloudStorage from '#server/cloud-storage';
 import * as db from '#server/db';
 import * as mappings from '#server/db/mappings';
@@ -146,6 +147,9 @@ async function getRemoteFiles() {
 }
 
 async function resetBudgetCache() {
+  // Pick up a changed budget month start day before recomputing
+  await budget.applyBudgetMonthStartDay();
+
   const spreadsheet = sheet.get();
 
   // Hold the cache dirty for the whole reset so an interrupted one doesn't
@@ -690,6 +694,7 @@ async function _loadBudget(id: Budget['id']): Promise<{
       ['budgetType'],
     )) ?? {};
   sheet.get().meta().budgetType = budgetType as prefs.BudgetType;
+  sheet.get().meta().budgetMonthStartDay = readBudgetMonthStartDay();
   await budget.createAllBudgets();
 
   // Load all the in-memory state

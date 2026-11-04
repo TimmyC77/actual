@@ -6,6 +6,7 @@ import * as monthUtils from '#shared/months';
 import { safeNumber } from '#shared/util';
 
 import { createCategory as createCategoryFromBase } from './base';
+import { getBudgetMonthStartDay } from './month-start';
 import { number, sumAmounts } from './util';
 
 export async function createCategory(cat, sheetName, prevSheetName) {
@@ -195,7 +196,10 @@ export function handleCategoryChange(months, oldValue, newValue) {
       const prevMonth = monthUtils.prevMonth(month);
       const prevSheetName = monthUtils.sheetForMonth(prevMonth);
       const sheetName = monthUtils.sheetForMonth(month);
-      const { start, end } = monthUtils.bounds(month);
+      const { start, end } = monthUtils.budgetMonthBounds(
+        month,
+        getBudgetMonthStartDay(),
+      );
 
       createCategoryFromBase(newValue, sheetName, prevSheetName, start, end);
 

@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import React, {
   useCallback,
   useEffect,
@@ -43,10 +42,13 @@ import {
   useSortCategoriesMutation,
 } from '#budget';
 import { closeBudget } from '#budgetfiles/budgetfilesSlice';
+import { BudgetMonthRange } from '#components/budget/BudgetMonthRange';
 import { prewarmMonth } from '#components/budget/util';
 import { FinancialText } from '#components/FinancialText';
 import { MobilePageHeader, Page } from '#components/Page';
 import { SyncRefresh } from '#components/SyncRefresh';
+// @ts-strict-ignore
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useCategories } from '#hooks/useCategories';
 import { useFeatureFlag } from '#hooks/useFeatureFlag';
 import { useFormat } from '#hooks/useFormat';
@@ -72,6 +74,7 @@ function isBudgetType(input?: string): input is 'envelope' | 'tracking' {
 }
 
 export function BudgetPage() {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { t } = useTranslation();
   const locale = useLocale();
   const {
@@ -86,7 +89,7 @@ export function BudgetPage() {
   const goalTemplatesUIEnabled = useFeatureFlag('goalTemplatesUIEnabled');
   const spreadsheet = useSpreadsheet();
 
-  const currMonth = monthUtils.currentMonth();
+  const currMonth = currentBudgetMonth;
   const [startMonth = currMonth, setStartMonthPref] =
     useLocalPref('budget.startMonth');
   const [monthBounds, setMonthBounds] = useState({
@@ -558,7 +561,7 @@ export function BudgetPage() {
             </Button>
           }
           rightContent={
-            !monthUtils.isCurrentMonth(startMonth) && (
+            startMonth !== currentBudgetMonth && (
               <Button
                 variant="bare"
                 onPress={onCurrentMonth}
@@ -998,6 +1001,7 @@ function MonthSelector({
         <Text style={styles.underlinedText}>
           {monthUtils.format(month, "MMMM ''yy", locale)}
         </Text>
+        <BudgetMonthRange month={month} />
       </Button>
       <Button
         aria-label={t('Next month')}

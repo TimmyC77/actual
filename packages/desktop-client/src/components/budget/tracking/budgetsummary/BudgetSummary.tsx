@@ -16,6 +16,7 @@ import { View } from '@actual-app/components/view';
 import * as monthUtils from '@actual-app/core/shared/months';
 import { css } from '@emotion/css';
 
+import { BudgetMonthRange } from '#components/budget/BudgetMonthRange';
 import { useTrackingBudget } from '#components/budget/tracking/TrackingBudgetContext';
 import { NotesButton } from '#components/NotesButton';
 import { useLocale } from '#hooks/useLocale';
@@ -129,6 +130,7 @@ export function BudgetSummary({ month }: BudgetSummaryProps) {
           >
             {monthUtils.format(month, 'MMMM', locale)}
           </div>
+          <BudgetMonthRange month={month} />
 
           <View
             style={{

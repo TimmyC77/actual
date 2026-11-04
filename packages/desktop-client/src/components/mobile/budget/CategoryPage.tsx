@@ -9,6 +9,7 @@ import * as monthUtils from '@actual-app/core/shared/months';
 import { MobileBackButton } from '#components/mobile/MobileBackButton';
 import { AddTransactionButton } from '#components/mobile/transactions/AddTransactionButton';
 import { MobilePageHeader, Page } from '#components/Page';
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useCategory } from '#hooks/useCategory';
 import { useLocale } from '#hooks/useLocale';
 import { useSyncedPref } from '#hooks/useSyncedPref';
@@ -17,6 +18,7 @@ import { CategoryTransactions } from './CategoryTransactions';
 import { UncategorizedTransactions } from './UncategorizedTransactions';
 
 export function CategoryPage() {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const locale = useLocale();
   const [_numberFormat] = useSyncedPref('numberFormat');
   const numberFormat = _numberFormat || 'comma-dot';
@@ -24,7 +26,7 @@ export function CategoryPage() {
 
   const { id: categoryIdParam } = useParams();
   const [searchParams] = useSearchParams();
-  const month = searchParams.get('month') || monthUtils.currentMonth();
+  const month = searchParams.get('month') || currentBudgetMonth;
   const { data: category } = useCategory(categoryIdParam);
 
   return (

@@ -10,6 +10,12 @@ import type { CategoryGroupEntity } from '#types/models';
 
 import * as budgetActions from './actions';
 import * as envelopeBudget from './envelope';
+import {
+  budgetMonthSql,
+  getBudgetMonthStartDay,
+  isBudgetMonthStartPref,
+  readBudgetMonthStartDay,
+} from './month-start';
 import * as trackingBudget from './tracking';
 
 export function getBudgetType() {
@@ -41,7 +47,7 @@ export function getBudgetRange(start: string, end: string) {
 // The day range spanning the given months. They aren't guaranteed to be
 // sorted, so find the first and last explicitly ('YYYY-MM' strings compare
 // chronologically).
-function getMonthSpanBounds(months: string[]) {
+function getMonthSpanBounds(months: string[], startDay: number) {
   let firstMonth = months[0];
   let lastMonth = months[0];
   for (const month of months) {
@@ -54,8 +60,8 @@ function getMonthSpanBounds(months: string[]) {
   }
 
   return {
-    rangeStart: monthUtils.bounds(firstMonth).start,
-    rangeEnd: monthUtils.bounds(lastMonth).end,
+    rangeStart: monthUtils.budgetMonthBounds(firstMonth, startDay).start,
+    rangeEnd: monthUtils.budgetMonthBounds(lastMonth, startDay).end,
   };
 }
 
@@ -69,17 +75,19 @@ function getMonthSpanBounds(months: string[]) {
 function getSumAmountsByMonth(
   rangeStart: number,
   rangeEnd: number,
+  startDay: number,
 ): Map<string, number> {
+  const month = budgetMonthSql('t.date', startDay);
   const rows = db.runQuery<{ month: number; category: string; amount: number }>(
     `SELECT t.category AS category,
-            t.date / 100 AS month,
+            ${month} AS month,
             SUM(t.amount) AS amount
        FROM v_transactions_internal_alive t
        LEFT JOIN accounts a ON a.id = t.account
       WHERE t.date >= ${rangeStart} AND t.date <= ${rangeEnd}
         AND t.category IS NOT NULL
         AND a.offbudget = 0
-      GROUP BY t.category, t.date / 100`,
+      GROUP BY t.category, ${month}`,
     [],
     true,
   );
@@ -101,8 +109,9 @@ export async function reseedSumAmounts(months: string[]): Promise<string[]> {
     return [];
   }
 
-  const { rangeStart, rangeEnd } = getMonthSpanBounds(months);
-  const sums = getSumAmountsByMonth(rangeStart, rangeEnd);
+  const startDay = getBudgetMonthStartDay();
+  const { rangeStart, rangeEnd } = getMonthSpanBounds(months, startDay);
+  const sums = getSumAmountsByMonth(rangeStart, rangeEnd, startDay);
 
   const { data: groups }: { data: CategoryGroupEntity[] } = await aqlQuery(
     q('category_groups').select('*'),
@@ -190,7 +199,10 @@ function handleTransactionChange(transaction, changedFields) {
     transaction.date &&
     transaction.category
   ) {
-    const month = monthUtils.monthFromDate(db.fromDateRepr(transaction.date));
+    const month = monthUtils.budgetMonthFromDate(
+      db.fromDateRepr(transaction.date),
+      getBudgetMonthStartDay(),
+    );
     const sheetName = monthUtils.sheetForMonth(month);
 
     sheet
@@ -249,7 +261,11 @@ export function triggerBudgetChanges(oldValues, newValues) {
       items.forEach(newValue => {
         const oldValue = old && old.get(newValue.id);
 
-        if (table === 'zero_budget_months') {
+        if (table === 'preferences') {
+          if (isBudgetMonthStartPref(newValue.id)) {
+            scheduleBudgetMonthStartCheck();
+          }
+        } else if (table === 'zero_budget_months') {
           handleBudgetMonthChange(newValue);
         } else if (table === 'zero_budgets' || table === 'reflect_budgets') {
           handleBudgetChange(newValue);
@@ -336,6 +352,7 @@ export async function createBudget(months) {
   meta.createdMonths = meta.createdMonths || new Set();
 
   const budgetType = getBudgetType();
+  const startDay = getBudgetMonthStartDay();
 
   if (budgetType === 'envelope') {
     envelopeBudget.createBudget(meta, categories, months);
@@ -352,8 +369,11 @@ export async function createBudget(months) {
   let sumAmounts: Map<string, number> | null = null;
   const getSumAmounts = () => {
     if (!sumAmounts) {
-      const { rangeStart, rangeEnd } = getMonthSpanBounds(monthsToCreate);
-      sumAmounts = getSumAmountsByMonth(rangeStart, rangeEnd);
+      const { rangeStart, rangeEnd } = getMonthSpanBounds(
+        monthsToCreate,
+        startDay,
+      );
+      sumAmounts = getSumAmountsByMonth(rangeStart, rangeEnd, startDay);
     }
     return sumAmounts;
   };
@@ -361,7 +381,7 @@ export async function createBudget(months) {
 
   monthsToCreate.forEach(month => {
     const prevMonth = monthUtils.prevMonth(month);
-    const { start, end } = monthUtils.bounds(month);
+    const { start, end } = monthUtils.budgetMonthBounds(month, startDay);
     const sheetName = monthUtils.sheetForMonth(month);
     const prevSheetName = monthUtils.sheetForMonth(prevMonth);
     const dbMonth = parseInt(month.replace('-', ''));
@@ -453,6 +473,13 @@ export async function setType(type) {
   }
 
   meta.budgetType = type;
+  return rebuildAllBudgets();
+}
+
+// Drops every budget cell and builds the months again. Needed whenever the
+// mapping from transactions to budget months changes.
+async function rebuildAllBudgets() {
+  const meta = sheet.get().meta();
   meta.createdMonths = new Set();
 
   // Go through and force all the cells to be recomputed
@@ -472,4 +499,32 @@ export async function setType(type) {
   sheet.get().endCacheBarrier();
 
   return bounds;
+}
+
+let budgetMonthStartCheck: Promise<void> | null = null;
+
+function scheduleBudgetMonthStartCheck() {
+  // Runs after the current sync transaction has been applied.
+  if (!budgetMonthStartCheck) {
+    budgetMonthStartCheck = Promise.resolve().then(async () => {
+      budgetMonthStartCheck = null;
+      await applyBudgetMonthStartDay();
+    });
+  }
+}
+
+// Picks up a changed budget month start day (or the experimental flag being
+// toggled) and rebuilds the budget so spent totals use the new ranges.
+export async function applyBudgetMonthStartDay() {
+  const s = sheet.get();
+  if (!s) {
+    return;
+  }
+  const startDay = readBudgetMonthStartDay();
+  const meta = s.meta();
+  if ((meta.budgetMonthStartDay || 1) === startDay) {
+    return;
+  }
+  meta.budgetMonthStartDay = startDay;
+  await rebuildAllBudgets();
 }

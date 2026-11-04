@@ -1,4 +1,3 @@
-// @ts-strict-ignore
 import React, { useEffect } from 'react';
 import type { ComponentProps } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -9,6 +8,8 @@ import { View } from '@actual-app/components/view';
 import * as monthUtils from '@actual-app/core/shared/months';
 
 import { FeatureErrorFallback } from '#components/FeatureErrorFallback';
+// @ts-strict-ignore
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useFeatureFlag } from '#hooks/useFeatureFlag';
 import { useGlobalPref } from '#hooks/useGlobalPref';
 
@@ -51,6 +52,7 @@ const DynamicBudgetTable = ({
   onBudgetAction,
   ...props
 }: DynamicBudgetTableProps) => {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { setDisplayMax } = useBudgetMonthCount();
   const [categoryExpandedStatePref] = useGlobalPref('categoryExpandedState');
   const isGoalTemplatesEnabled = useFeatureFlag('goalTemplatesEnabled');
@@ -110,7 +112,7 @@ const DynamicBudgetTable = ({
     () => {
       _onMonthSelect(
         monthUtils.subMonths(
-          monthUtils.currentMonth(),
+          currentBudgetMonth,
           type === 'envelope'
             ? Math.floor((numMonths - 1) / 2)
             : numMonths === 2

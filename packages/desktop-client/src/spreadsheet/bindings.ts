@@ -1,3 +1,4 @@
+import * as monthUtils from '@actual-app/core/shared/months';
 import { q } from '@actual-app/core/shared/query';
 import type {
   AccountEntity,
@@ -103,16 +104,27 @@ export function accountGroupBalance(
   } satisfies Binding<'account', `account-group-balance-${string}`>;
 }
 
+// Query filter matching dates inside a budget month, which may start on a
+// day other than the 1st (see `customBudgetMonthStart`).
+export function budgetMonthDateFilter(month: string, startDay = 1) {
+  if (startDay <= 1) {
+    return { $transform: '$month', $eq: month };
+  }
+  const { start, end } = monthUtils.budgetMonthDateRange(month, startDay);
+  return { $gte: start, $lte: end };
+}
+
 export function categoryBalance(
   categoryId: CategoryEntity['id'],
   month: string,
+  startDay = 1,
 ) {
   return {
     name: categoryParametrizedField('balance')(categoryId),
     query: q('transactions')
       .filter({
         category: categoryId,
-        date: { $transform: '$month', $eq: month },
+        date: budgetMonthDateFilter(month, startDay),
       })
       .options({ splits: 'inline' })
       .calculate({ $sum: '$amount' }),
@@ -122,13 +134,14 @@ export function categoryBalance(
 export function categoryBalanceCleared(
   categoryId: CategoryEntity['id'],
   month: string,
+  startDay = 1,
 ) {
   return {
     name: categoryParametrizedField('balanceCleared')(categoryId),
     query: q('transactions')
       .filter({
         category: categoryId,
-        date: { $transform: '$month', $eq: month },
+        date: budgetMonthDateFilter(month, startDay),
         cleared: true,
       })
       .options({ splits: 'inline' })
@@ -139,13 +152,14 @@ export function categoryBalanceCleared(
 export function categoryBalanceUncleared(
   categoryId: CategoryEntity['id'],
   month: string,
+  startDay = 1,
 ) {
   return {
     name: categoryParametrizedField('balanceUncleared')(categoryId),
     query: q('transactions')
       .filter({
         category: categoryId,
-        date: { $transform: '$month', $eq: month },
+        date: budgetMonthDateFilter(month, startDay),
         cleared: false,
       })
       .options({ splits: 'inline' })

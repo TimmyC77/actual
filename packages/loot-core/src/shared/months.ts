@@ -265,6 +265,62 @@ export function bounds(month: DateLike): { start: number; end: number } {
   };
 }
 
+// Budget months can optionally start on a day other than the 1st (the
+// `customBudgetMonthStart` experimental feature). A budget month with start
+// day N covers day N of the previous calendar month up to day N-1 of its own
+// calendar month, so with N = 27 the budget month "2026-11" runs from
+// 2026-10-27 to 2026-11-26. A start day of 1 means plain calendar months.
+export function normalizeBudgetMonthStartDay(value: unknown): number {
+  const day = parseInt(String(value ?? ''), 10);
+  return Number.isInteger(day) && day >= 1 && day <= 28 ? day : 1;
+}
+
+export function budgetMonthBounds(
+  month: DateLike,
+  startDay: number = 1,
+): { start: number; end: number } {
+  if (startDay <= 1) {
+    return bounds(month);
+  }
+  const monthStart = d.startOfMonth(_parse(month));
+  const start = d.setDate(d.subMonths(monthStart, 1), startDay);
+  const end = d.setDate(monthStart, startDay - 1);
+  return {
+    start: parseInt(d.format(start, 'yyyyMMdd')),
+    end: parseInt(d.format(end, 'yyyyMMdd')),
+  };
+}
+
+export function budgetMonthDateRange(
+  month: DateLike,
+  startDay: number = 1,
+): { start: string; end: string } {
+  const { start, end } = budgetMonthBounds(month, startDay);
+  const toDay = (n: number) => {
+    const s = String(n);
+    return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  };
+  return { start: toDay(start), end: toDay(end) };
+}
+
+export function budgetMonthFromDate(
+  date: DateLike,
+  startDay: number = 1,
+): string {
+  const parsed = _parse(date);
+  if (startDay > 1 && d.getDate(parsed) >= startDay) {
+    return d.format(d.addMonths(d.startOfMonth(parsed), 1), 'yyyy-MM');
+  }
+  return d.format(parsed, 'yyyy-MM');
+}
+
+export function currentBudgetMonth(startDay: number = 1): string {
+  if (startDay <= 1 || global.IS_TESTING || Platform.isPlaywright) {
+    return currentMonth();
+  }
+  return budgetMonthFromDate(new Date(), startDay);
+}
+
 export function _yearRange(
   start: DateLike,
   end: DateLike,

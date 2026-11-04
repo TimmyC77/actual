@@ -13,7 +13,6 @@ import { styles } from '@actual-app/components/styles';
 import { Text } from '@actual-app/components/text';
 import { theme } from '@actual-app/components/theme';
 import { View } from '@actual-app/components/view';
-import * as monthUtils from '@actual-app/core/shared/months';
 import { css } from '@emotion/css';
 
 import { BalanceWithCarryover } from '#components/budget/BalanceWithCarryover';
@@ -22,6 +21,7 @@ import { NotesButton } from '#components/NotesButton';
 import { CellValue, CellValueText } from '#components/spreadsheet/CellValue';
 import { Field, Row, SheetCell } from '#components/table';
 import type { SheetCellProps } from '#components/table';
+import { useCurrentBudgetMonth } from '#hooks/useBudgetMonthStartDay';
 import { useCategoryScheduleGoalTemplateIndicator } from '#hooks/useCategoryScheduleGoalTemplateIndicator';
 import { useFormat } from '#hooks/useFormat';
 import { useNavigate } from '#hooks/useNavigate';
@@ -142,6 +142,7 @@ export const ExpenseGroupMonth = memo(function ExpenseGroupMonth({
   month,
   group,
 }: CategoryGroupMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { id } = group;
 
   return (
@@ -149,9 +150,10 @@ export const ExpenseGroupMonth = memo(function ExpenseGroupMonth({
       style={{
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetHeaderCurrentMonth
-          : theme.budgetHeaderOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetHeaderCurrentMonth
+            : theme.budgetHeaderOtherMonth,
       }}
     >
       <EnvelopeSheetCell
@@ -200,6 +202,7 @@ export const ExpenseCategoryMonth = memo(function ExpenseCategoryMonth({
   onBudgetAction,
   onShowActivity,
 }: CategoryMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const { t } = useTranslation();
   const format = useFormat();
 
@@ -263,9 +266,10 @@ export const ExpenseCategoryMonth = memo(function ExpenseCategoryMonth({
       style={{
         flex: 1,
         flexDirection: 'row',
-        backgroundColor: monthUtils.isCurrentMonth(month)
-          ? theme.budgetCurrentMonth
-          : theme.budgetOtherMonth,
+        backgroundColor:
+          month === currentBudgetMonth
+            ? theme.budgetCurrentMonth
+            : theme.budgetOtherMonth,
         '& .hover-visible': {
           opacity: 0,
           transition: 'opacity .25s',
@@ -554,6 +558,7 @@ type IncomeGroupMonthProps = {
   month: string;
 };
 export function IncomeGroupMonth({ month }: IncomeGroupMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   return (
     <View style={{ flex: 1 }}>
       <EnvelopeSheetCell
@@ -564,9 +569,10 @@ export function IncomeGroupMonth({ month }: IncomeGroupMonthProps) {
           fontWeight: 600,
           paddingRight: styles.monthRightPadding,
           ...styles.tnum,
-          backgroundColor: monthUtils.isCurrentMonth(month)
-            ? theme.budgetHeaderCurrentMonth
-            : theme.budgetHeaderOtherMonth,
+          backgroundColor:
+            month === currentBudgetMonth
+              ? theme.budgetHeaderCurrentMonth
+              : theme.budgetHeaderOtherMonth,
         }}
         valueProps={{
           binding: envelopeBudget.groupIncomeReceived,
@@ -584,6 +590,7 @@ export function IncomeCategoryMonth({
   onShowActivity,
   onBudgetAction,
 }: CategoryMonthProps) {
+  const currentBudgetMonth = useCurrentBudgetMonth();
   const incomeMenuTriggerRef = useRef(null);
   const [incomeMenuOpen, setIncomeMenuOpen] = useState(false);
   const [incomePosition, setIncomePosition] = useState({
@@ -613,9 +620,10 @@ export function IncomeCategoryMonth({
         style={{
           textAlign: 'right',
           ...(isLast && { borderBottomWidth: 0 }),
-          backgroundColor: monthUtils.isCurrentMonth(month)
-            ? theme.budgetCurrentMonth
-            : theme.budgetOtherMonth,
+          backgroundColor:
+            month === currentBudgetMonth
+              ? theme.budgetCurrentMonth
+              : theme.budgetOtherMonth,
         }}
       >
         <View
